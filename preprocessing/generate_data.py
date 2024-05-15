@@ -295,7 +295,7 @@ class BatchGenerator(Sequence):
         return str(Seq(seq).reverse_complement())
 
     def get_seq(self, file_name):
-        fasta_file, idx = file_name.rsplit('$', 1)
+        fasta_file, index = file_name.rsplit('$', 1)
         if fasta_file not in self.fastas:
             self.fastas[fasta_file] = SeqIO.parse(fasta_file, 'fasta')
         record = next(self.fastas[fasta_file])
@@ -321,21 +321,6 @@ class BatchGenerator(Sequence):
             except ValueError as e:
                 warning(f'rev_comp of sequence {file_name} could not be '
                         f'computed: {e}')
-        method_kwargs = {}
-        if (self.enc_method == words2index):
-            method_kwargs['handle_nonalph'] = 'special'
-        elif (self.enc_method == words2onehot):
-            method_kwargs['handle_nonalph'] = 'split'
-        elif (self.enc_method == words2vec):
-            method_kwargs['w2vfile'] = self.w2vfile
-        return np.array(encode_sequence(
-            raw_seq, fixed_size_method=self.fixed_size_method,
-            max_seq_len=self.max_seq_len,
-            method=self.enc_method,
-            k=self.enc_k,
-            stride=self.enc_stride,
-            **method_kwargs))
-
         method_kwargs = {}
         if (self.enc_method == words2index):
             method_kwargs['handle_nonalph'] = 'special'
