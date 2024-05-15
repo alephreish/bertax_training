@@ -275,7 +275,7 @@ class BatchGenerator(Sequence):
     custom_encode_sequence: Optional[Callable[[str], list]] = None
     process_batch_function: Optional[Callable[[list], list]] = None
     save_batches: bool = False
-    file_handles: Optional[Dict] = None
+    fastas: Optional[Dict] = None
 
     def __post_init__(self):
         if (not self.force_max_len):
@@ -289,58 +289,16 @@ class BatchGenerator(Sequence):
             self.samples.update({c: [index for index, i in enumerate(self.labels) if i == c]})
         self.number_samples_per_class_to_pick = min([len(i) for class_i, i in self.samples.items()])
         self.on_epoch_end()
-        self.file_handles = {}
+        self.fastas = {}
 
     def get_rev_comp(seq):
         return str(Seq(seq).reverse_complement())
 
     def get_seq(self, file_name):
-        # unnecessary conditional, but small performance boost (maybe)
-        if (self.rev_comp and self.rev_comp_mode == 'independent'):
-            raw_seq = read_seq(re.sub(r'\$.*$', '', file_name))
-        else:
-            raw_seq = read_seq(file_name)
-        if (self.custom_encode_sequence is not None):
-            return self.custom_encode_sequence(raw_seq)
-        if (self.rev_comp):
-            try:
-                if (self.rev_comp_mode == 'append'):
-                    # TODO: maybe padding in between = 3*10 N's
-                    raw_seq += BatchGenerator.get_rev_comp(raw_seq)
-                elif (self.rev_comp_mode == 'random'):
-                    raw_seq = choice((raw_seq,
-                                      BatchGenerator.get_rev_comp(raw_seq)))
-                elif (self.rev_comp_mode == 'independent'):
-                    if (file_name.endswith('$rev_comp')):
-                        debug(f'{file_name}\'s reverse complement is used')
-                        raw_seq = BatchGenerator.get_rev_comp(raw_seq)
-                else:
-                    raise Exception(f'rev_comp_mode {self.rev_comp_mode} '
-                                    'not supported')
-            except ValueError as e:
-                warning(f'rev_comp of sequence {file_name} could not be '
-                        f'computed: {e}')
-        method_kwargs = {}
-        if (self.enc_method == words2index):
-            method_kwargs['handle_nonalph'] = 'special'
-        elif (self.enc_method == words2onehot):
-            method_kwargs['handle_nonalph'] = 'split'
-        elif (self.enc_method == words2vec):
-            method_kwargs['w2vfile'] = self.w2vfile
-        return np.array(encode_sequence(
-            raw_seq, fixed_size_method=self.fixed_size_method,
-            max_seq_len=self.max_seq_len,
-            method=self.enc_method,
-            k=self.enc_k,
-            stride=self.enc_stride,
-            **method_kwargs))
-
-    def get_seq_fh(self, file_name):
-        file_prefix = file_name.split('$')[0]
-        if file_prefix not in self.file_handles:
-            self.file_handles[file_prefix] = SeqIO.parse(file_prefix, 'fasta')
-
-        record = next(self.file_handles[file_prefix])
+        fasta_file, idx = file_name.rsplit('$', 1)
+        if fasta_file not in self.fastas:
+            self.fastas[fasta_file] = SeqIO.parse(fasta_file, 'fasta')
+        record = next(self.fastas[fasta_file])
         raw_seq = str(record.seq)
 
         if (self.custom_encode_sequence is not None):
@@ -378,6 +336,21 @@ class BatchGenerator(Sequence):
             stride=self.enc_stride,
             **method_kwargs))
 
+        method_kwargs = {}
+        if (self.enc_method == words2index):
+            method_kwargs['handle_nonalph'] = 'special'
+        elif (self.enc_method == words2onehot):
+            method_kwargs['handle_nonalph'] = 'split'
+        elif (self.enc_method == words2vec):
+            method_kwargs['w2vfile'] = self.w2vfile
+        return np.array(encode_sequence(
+            raw_seq, fixed_size_method=self.fixed_size_method,
+            max_seq_len=self.max_seq_len,
+            method=self.enc_method,
+            k=self.enc_k,
+            stride=self.enc_stride,
+            **method_kwargs))
+
     def __len__(self):
         # old version does count all samples available rather than only samples used in epoch
         # return np.ceil(len(self.file_names) /
@@ -391,7 +364,7 @@ class BatchGenerator(Sequence):
         class_vectors = get_class_vectors(self.classes)
         if (self.cache and idx in self.cached):
             return self.cached[idx]
-        batch_x = [self.get_seq_fh(file_name) for file_name in batch_filenames]
+        batch_x = [self.get_seq(file_name) for file_name in batch_filenames]
         batch_y = np.array([class_vectors[label] for label in batch_labels])
         if (self.process_batch_function is not None):
             result = (self.process_batch_function(batch_x), batch_y)
