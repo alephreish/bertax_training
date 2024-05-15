@@ -45,7 +45,7 @@ def parse_arguments():
     parser.add_argument('--repeated_undersampling', help=' ', action='store_true')
     parser.add_argument('--val_split', help=' ', default=0.05, type=float)
     parser.add_argument('--test_split', help=' ', default=0.2, type=float)
-    parser.add_argument('--classes', help=' ', default=PARAMS['data']['classes'][1])
+    parser.add_argument('--classes', nargs='+', help=' ', default=PARAMS['data']['classes'][1])
     parser.add_argument('--alphabet', help=' ', default=ALPHABET)
     parser.add_argument('--k', help=' ', default=3, type=int)
     parser.add_argument('--stride', help=' ', default=3, type=int)
@@ -90,7 +90,7 @@ if __name__ == '__main__':
         batch_size=args.batch_size,
         custom_encode_sequence=custom_encode_sequence,
         process_batch_function=process_bert_tokens_batch,
-        enc_k=args.k, enc_stride=args.stride, root_fa_dir=args.root_fa_dir)
+        enc_k=args.k, enc_stride=args.stride)
 
     # for long run
     filepath1 = splitext(args.pretrained_path)[0] + "model.best.acc.hdf5"
