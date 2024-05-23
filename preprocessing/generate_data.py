@@ -37,6 +37,7 @@ class DataSplit:
     balance: bool = True
     shuffle_: bool = True
     repeated_undersampling: bool = True
+    multi_fasta: Optional[bool] = False
 
     def __post_init__(self):
         if self.repeated_undersampling:
@@ -96,18 +97,22 @@ class DataSplit:
             if (from_cache_format == 'json'):
                 with open(from_cache) as f:
                     info('reading in cached file names')
-                    file_names, labels, sizes = json.load(f)
+                    if self.multi_fasta:
+                        file_names, labels, sizes = json.load(f)
+                        self.file_names = []
+                        self.labels = []
+                        for file_name, label, size in zip(file_names, labels, sizes):
+                            for i in range(size):
+                                self.file_names.append(os.path.join(self.root_fa_dir, f"{file_name}${i}"))
+                                self.labels.append(label)
+                    else:
+                        self.file_names, self.labels = json.load(f)
+
                     if (self.duplicate_data is not None):
                         info('duplicating file names and labels')
-                        self.file_names += [f'{_}${self.duplicate_data}'
-                                            for _ in file_names]
+                        self.file_names += [f'{_}${self.duplicate_data}' for _ in self.file_names]
                         self.labels *= 2
-                    self.file_names = []
-                    self.labels = []
-                    for file_name, label, size in zip(file_names, labels, sizes):
-                        for i in range(size):
-                            self.file_names.append(os.path.join(self.root_fa_dir, f"{file_name}${i}"))
-                            self.labels.append(label)
+                    self.file_names = [os.path.join(self.root_fa_dir, f) for f in self.file_names]
             else:
                 with open(from_cache, 'rb') as f:
                     info('reading in cached file names')
@@ -295,11 +300,14 @@ class BatchGenerator(Sequence):
         return str(Seq(seq).reverse_complement())
 
     def get_seq(self, file_name):
-        fasta_file, index = file_name.rsplit('$', 1)
-        if fasta_file not in self.fastas:
-            self.fastas[fasta_file] = SeqIO.parse(fasta_file, 'fasta')
-        record = next(self.fastas[fasta_file])
-        raw_seq = str(record.seq)
+        if self.multi_fasta:
+            fasta_file, index = file_name.rsplit('$', 1)
+            if fasta_file not in self.fastas:
+                self.fastas[fasta_file] = SeqIO.parse(fasta_file, 'fasta')
+            record = next(self.fastas[fasta_file])
+            raw_seq = str(record.seq)
+        else:
+            raw_seq = read_seq(file_name)
 
         if (self.custom_encode_sequence is not None):
             return self.custom_encode_sequence(raw_seq)

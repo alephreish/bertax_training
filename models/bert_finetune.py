@@ -13,11 +13,11 @@ from os.path import splitext
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, EarlyStopping
 from logging import warning
 
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_policy(policy)
-print('Compute dtype: %s' % policy.compute_dtype)
-print('Variable dtype: %s' % policy.variable_dtype)
+#from tensorflow.keras.mixed_precision import experimental as mixed_precision
+#policy = mixed_precision.Policy('mixed_float16')
+#mixed_precision.set_policy(policy)
+#print('Compute dtype: %s' % policy.compute_dtype)
+#print('Variable dtype: %s' % policy.variable_dtype)
 
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 mirrored_strategy = tf.distribute.MirroredStrategy()
@@ -52,6 +52,7 @@ def parse_arguments():
     parser.add_argument('--seq_len', help=' ', default=502, type=int)
     parser.add_argument('--store_predictions', help=' ', action='store_true')
     parser.add_argument('--roc_auc', help=' ', action='store_true')
+    parser.add_argument('--multi_fasta', help='Multi-fasta as input', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -80,7 +81,7 @@ if __name__ == '__main__':
                       classes=args.classes, from_cache=args.from_cache,
                       train_test_split=args.test_split,
                       val_split=args.val_split, balance=not args.no_balance,
-                      repeated_undersampling=args.repeated_undersampling)
+                      repeated_undersampling=args.repeated_undersampling, multi_fasta = args.multi_fasta)
 
     def custom_encode_sequence(seq):
         return seq2tokens(seq, token_dict, seq_length=args.seq_len,
