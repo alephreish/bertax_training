@@ -239,6 +239,7 @@ class DataSplit:
                       custom_encode_sequence=None,
                       process_batch_function=None) -> tuple:
         kwargs = {'classes': self.classes, 'batch_size': batch_size,
+                  'multi_fasta': self.multi_fasta,
                   'rev_comp': rev_comp, 'rev_comp_mode': rev_comp_mode,
                   'fixed_size_method': fixed_size_method,
                   'enc_method': enc_method, 'enc_dimension': enc_dimension,
@@ -281,6 +282,7 @@ class BatchGenerator(Sequence):
     process_batch_function: Optional[Callable[[list], list]] = None
     save_batches: bool = False
     fastas: Optional[Dict] = None
+    multi_fasta: Optional[bool] = False
 
     def __post_init__(self):
         if (not self.force_max_len):
