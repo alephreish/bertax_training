@@ -103,7 +103,7 @@ class DataSplit:
                         self.labels = []
                         for file_name, label, size in zip(file_names, labels, sizes):
                             for i in range(size):
-                                self.file_names.append(os.path.join(self.root_fa_dir, f"{file_name}${i}"))
+                                self.file_names.append(f"{file_name}${i}")
                                 self.labels.append(label)
                     else:
                         self.file_names, self.labels = json.load(f)
