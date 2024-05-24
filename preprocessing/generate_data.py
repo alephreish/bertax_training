@@ -394,6 +394,12 @@ class BatchGenerator(Sequence):
         'Updates indexes after each epoch'
         self.list_IDs = np.random.permutation(self.list_IDs)
 
+        # Clear the file handles
+        if self.fastas:
+            for file_name, fasta_iterator in self.fastas.items():
+                fasta_iterator.stream.close()
+            self.fastas = {}
+
 @dataclass
 class FragmentGenerator(Sequence):
     x: list
